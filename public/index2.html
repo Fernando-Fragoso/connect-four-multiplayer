@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla JS Connect Four</title>
-    <!-- Put this script tag inside your HTML head or right before your original script -->
-
+    <title>Vanilla JS Connect Four - Multiplayer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,11 +11,55 @@
             flex-direction: column;
             align-items: center;
             background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
         }
+        /* Lobby Screen Styling */
+        #lobby {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        #lobby h2 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        #lobby input {
+            padding: 12px 20px;
+            font-size: 18px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            width: 250px;
+            text-align: center;
+        }
+        #lobby button {
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: #0051ba;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #lobby button:hover { background-color: #003d8c; }
+
+        /* Game Screen Styling */
         #status {
             font-size: 24px;
             margin: 20px;
             font-weight: bold;
+            text-align: center;
         }
         #board {
             display: grid;
@@ -27,7 +69,7 @@
             background-color: #0051ba;
             padding: 12px;
             border-radius: 10px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 16 rgba(0,0,0,0.2);
             cursor: pointer;
         }
         .cell {
@@ -56,27 +98,57 @@
 </head>
 <body>
 
-    <div id="status">Player 1's Turn (Red)</div>
+    <!-- Lobby Screen Overlay -->
+    <div id="lobby">
+        <h2>Enter Your Name to Play</h2>
+        <input type="text" id="usernameInput" placeholder="Your Name" maxlength="15" autocomplete="off">
+        <button onclick="joinGameLobby()">Join Matchmaking</button>
+    </div>
+
+    <!-- Main Game View -->
+    <div id="status">Enter your name above to begin...</div>
     <div id="board"></div>
     <button id="reset" onclick="resetGame()">Restart Game</button>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
+    const socket = io(); 
     const ROWS = 6;
     const COLS = 7;
     let board = [];
-    let currentPlayer = 1; // 1 = Red, 2 = Yellow
-    let gameActive = true;
+    let currentPlayer = 1; 
+    let gameActive = false;
+    
+    // Multiplayer State
+    let myPlayerNumber = null; 
+    let myName = "";
+    let opponentName = "Waiting...";
 
     const boardElement = document.getElementById('board');
     const statusElement = document.getElementById('status');
 
-    // Initialize data matrix and UI grid
+    // Triggered when clicking the button in the lobby overlay
+    function joinGameLobby() {
+        const input = document.getElementById('usernameInput');
+        myName = input.value.trim();
+        
+        if (!myName) {
+            alert("Please enter a valid name!");
+            return;
+        }
+
+        // Hide lobby overlay and notify backend server
+        document.getElementById('lobby').style.display = 'none';
+        statusElement.innerText = "Finding a match...";
+        socket.emit('registerPlayer', { name: myName });
+    }
+
     function initGame() {
         board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
         boardElement.innerHTML = '';
         gameActive = true;
         currentPlayer = 1;
-        statusElement.innerText = "Player 1's Turn (Red)";
+        updateStatusText();
 
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
@@ -84,16 +156,55 @@
                 cell.classList.add('cell');
                 cell.dataset.row = r;
                 cell.dataset.col = c;
-                cell.addEventListener('click', () => handleCellClick(c));
+                cell.addEventListener('click', () => handleCellClick(c, true));
                 boardElement.appendChild(cell);
             }
         }
     }
 
-    function handleCellClick(col) {
+    // Network Event: Assigned a role
+    socket.on('assignPlayer', (data) => {
+        myPlayerNumber = data.playerNum;
+    });
+
+    // Network Event: Match found, opponent names received
+    socket.on('gameReady', (data) => {
+        opponentName = myPlayerNumber === 1 ? data.p2Name : data.p1Name;
+        initGame();
+    });
+
+    // Network Event: Opponent dropped connection
+    socket.on('opponentLeft', () => {
+        gameActive = false;
+        statusElement.innerText = `${opponentName} left the game! Refresh to find a new match.`;
+    });
+
+    socket.on('moveMade', (data) => {
+        handleCellClick(data.col, false); 
+    });
+
+    socket.on('gameRestarted', () => {
+        initGame();
+    });
+
+    function updateStatusText() {
         if (!gameActive) return;
 
-        // Gravity logic: find the lowest empty row in the clicked column
+        // Establish token colors
+        const p1Label = myPlayerNumber === 1 ? `${myName} (Red)` : `${opponentName} (Red)`;
+        const p2Label = myPlayerNumber === 2 ? `${myName} (Yellow)` : `${opponentName} (Yellow)`;
+
+        if (currentPlayer === myPlayerNumber) {
+            statusElement.innerText = `Your Turn! Choose a column.`;
+        } else {
+            statusElement.innerText = `Waiting for ${currentPlayer === 1 ? p1Label : p2Label}...`;
+        }
+    }
+
+    function handleCellClick(col, isLocalMove) {
+        if (!gameActive) return;
+        if (isLocalMove && currentPlayer !== myPlayerNumber) return;
+
         let targetRow = -1;
         for (let r = ROWS - 1; r >= 0; r--) {
             if (board[r][col] === 0) {
@@ -102,19 +213,20 @@
             }
         }
 
-        // Column is full
         if (targetRow === -1) return;
 
-        // Update logical board state
         board[targetRow][col] = currentPlayer;
 
-        // Update UI board state
         const cell = document.querySelector(`[data-row='${targetRow}'][data-col='${col}']`);
         cell.classList.add(currentPlayer === 1 ? 'player1' : 'player2');
 
-        // Evaluate game status
+        if (isLocalMove) {
+            socket.emit('makeMove', { col: col });
+        }
+
         if (checkWin(targetRow, col)) {
-            statusElement.innerText = `Player ${currentPlayer} Wins! 🎉`;
+            const winnerName = currentPlayer === myPlayerNumber ? myName : opponentName;
+            statusElement.innerText = `🎉 ${winnerName} Wins the Match! 🎉`;
             gameActive = false;
             return;
         }
@@ -125,29 +237,21 @@
             return;
         }
 
-        // Switch turns
         currentPlayer = currentPlayer === 1 ? 2 : 1;
-        statusElement.innerText = `Player ${currentPlayer}'s Turn (${currentPlayer === 1 ? 'Red' : 'Yellow'})`;
+        updateStatusText();
     }
 
     function checkWin(r, c) {
         const p = board[r][c];
-        // Direction vectors: [row_offset, col_offset]
         const directions = [
-            [[0, 1], [0, -1]],   // Horizontal
-            [[1, 0], [-1, 0]],   // Vertical
-            [[1, 1], [-1, -1]],  // Diagonal down-right
-            [[1, -1], [-1, 1]]   // Diagonal down-left
+            [[0, 1], [0, -1]], [[1, 0], [-1, 0]],
+            [[1, 1], [-1, -1]], [[1, -1], [-1, 1]]
         ];
-
         for (const dir of directions) {
-            let count = 1; // Count the piece just placed
-            
+            let count = 1;
             for (const [dr, dc] of dir) {
                 let stepR = r + dr;
                 let stepC = c + dc;
-                
-                // Track matches continuously in one direction vector line
                 while (stepR >= 0 && stepR < ROWS && stepC >= 0 && stepC < COLS && board[stepR][stepC] === p) {
                     count++;
                     stepR += dr;
@@ -164,11 +268,8 @@
     }
 
     function resetGame() {
-        initGame();
+        socket.emit('resetGame');
     }
-
-    // Start on load
-    initGame();
 </script>
 </body>
 </html>
