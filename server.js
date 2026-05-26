@@ -10,28 +10,38 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-let games = {}; // Global database matrix holding match structures
+let games = {}; 
 
 function broadcastGameDirectory() {
     const list = Object.keys(games).map(id => ({
         id: id,
         name: games[id].gameName,
-        hasP2: !!games[id].p2 || !!games[id].p2DisconnectedName, // Still counted as full if holding slot
+        hasP2: !!games[id].p2 || !!games[id].p2DisconnectedName,
         hasPassword: !!games[id].password,
         specCount: games[id].spectators.length
     }));
     io.emit('gameListUpdate', list);
 }
 
+// FIXED: Clean directional vectors with zero missing slots or syntax elisions
 function checkWin(board, r, c) {
     const p = board[r][c];
-    const directions = [[,[0,-1]], [,[-1,0]], [,[-1,-1]], [[1,-1],[-1,1]]];
+    const directions = [
+        [[0, 1], [0, -1]],   // Horizontal
+        [[1, 0], [-1, 0]],   // Vertical
+        [[1, 1], [-1, -1]],  // Diagonal down-right
+        [[1, -1], [-1, 1]]   // Diagonal down-left
+    ];
+
     for (const dir of directions) {
         let count = 1;
         for (const [dr, dc] of dir) {
-            let sR = r + dr; let sC = c + dc;
+            let sR = r + dr; 
+            let sC = c + dc;
             while (sR >= 0 && sR < 6 && sC >= 0 && sC < 7 && board[sR][sC] === p) {
-                count++; sR += dr; sC += dc;
+                count++; 
+                sR += dr; 
+                sC += dc;
             }
         }
         if (count >= 4) return true;
@@ -39,7 +49,6 @@ function checkWin(board, r, c) {
     return false;
 }
 io.on('connection', (socket) => {
-    // Send structural room list to user immediately upon connecting
     broadcastGameDirectory();
 
     socket.on('createGame', (data) => {
@@ -49,7 +58,7 @@ io.on('connection', (socket) => {
             password: data.password || null,
             p1: socket.id, p1Name: data.name, p1Score: 0, p1Timeout: null,
             p2: null, p2Name: null, p2Score: 0, p2Timeout: null,
-            p1DisconnectedName: null, p2DisconnectedName: null, // Recovery flags
+            p1DisconnectedName: null, p2DisconnectedName: null, 
             spectators: [],
             board: Array(6).fill(null).map(() => Array(7).fill(0)),
             currentPlayer: 1,
@@ -76,12 +85,11 @@ io.on('connection', (socket) => {
         socket.gameId = data.gameId;
         socket.join(data.gameId);
 
-        // RECONNECTION CHECKS: Check if this user is rejoining an old slot
         if (g.p1DisconnectedName && g.p1DisconnectedName === data.name) {
             clearTimeout(g.p1Timeout);
             g.p1 = socket.id;
             g.p1DisconnectedName = null;
-            g.gameActive = !!g.p2; // Reactivate if opponent is here
+            g.gameActive = !!g.p2; 
             socket.emit('joinSuccess', { playerNum: 1, p1Name: g.p1Name, p2Name: g.p2Name });
             io.to(data.gameId).emit('playerReconnected', { msg: `${g.p1Name} reconnected!` });
         } else if (g.p2DisconnectedName && g.p2DisconnectedName === data.name) {
@@ -92,13 +100,11 @@ io.on('connection', (socket) => {
             socket.emit('joinSuccess', { playerNum: 2, p1Name: g.p1Name, p2Name: g.p2Name });
             io.to(data.gameId).emit('playerReconnected', { msg: `${g.p2Name} reconnected!` });
         } else if (!g.p2 && !g.p2DisconnectedName) {
-            // Normal Player 2 Join
             g.p2 = socket.id;
             g.p2Name = data.name;
             g.gameActive = true; 
             socket.emit('joinSuccess', { playerNum: 2, p1Name: g.p1Name, p2Name: g.p2Name });
         } else {
-            // Spectator Join
             g.spectators.push(socket.id);
             socket.emit('joinSuccess', { playerNum: 0, p1Name: g.p1Name, p2Name: g.p2Name });
         }
@@ -153,15 +159,13 @@ io.on('connection', (socket) => {
         });
     });
 
-    // SURRENDER TRIGGER HOOK
     socket.on('requestMatchReset', () => {
         const g = games[socket.gameId];
         if (!g) return;
 
         const senderNum = g.p1 === socket.id ? 1 : (g.p2 === socket.id ? 2 : 0);
-        if (senderNum === 0) return; // Spectators ignored
+        if (senderNum === 0) return; 
 
-        // If game is actively running, this counts as folding/forfeiting
         if (g.gameActive) {
             if (senderNum === 1) {
                 g.p2Score++;
@@ -193,7 +197,6 @@ io.on('connection', (socket) => {
                 g.gameActive = false;
                 io.to(gId).emit('opponentDisconnected', { msg: `${g.p1Name} disconnected! Waiting 60s for re-entry...` });
                 
-                // Keep room open for 60 seconds
                 g.p1Timeout = setTimeout(() => {
                     if (games[gId] && !games[gId].p1) {
                         io.to(gId).emit('roomDestroyed');
