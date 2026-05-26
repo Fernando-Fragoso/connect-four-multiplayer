@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanilla JS Connect Four</title>
+    <!-- Put this script tag inside your HTML head or right before your original script -->
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f2f5;
+        }
+        #status {
+            font-size: 24px;
+            margin: 20px;
+            font-weight: bold;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 70px);
+            grid-template-rows: repeat(6, 70px);
+            gap: 8px;
+            background-color: #0051ba;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+        .cell {
+            background-color: #ffffff;
+            border-radius: 50%;
+            width: 70px;
+            height: 70px;
+            box-shadow: inset 0 4px 6px rgba(0,0,0,0.15);
+            transition: background-color 0.2s ease;
+        }
+        .cell.player1 { background-color: #ff4136; }
+        .cell.player2 { background-color: #ffdc00; }
+        #reset {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            background-color: #333;
+            color: white;
+            border-radius: 5px;
+        }
+        #reset:hover { background-color: #555; }
+    </style>
+</head>
+<body>
+
+    <div id="status">Player 1's Turn (Red)</div>
+    <div id="board"></div>
+    <button id="reset" onclick="resetGame()">Restart Game</button>
+
+<script>
+    const ROWS = 6;
+    const COLS = 7;
+    let board = [];
+    let currentPlayer = 1; // 1 = Red, 2 = Yellow
+    let gameActive = true;
+
+    const boardElement = document.getElementById('board');
+    const statusElement = document.getElementById('status');
+
+    // Initialize data matrix and UI grid
+    function initGame() {
+        board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+        boardElement.innerHTML = '';
+        gameActive = true;
+        currentPlayer = 1;
+        statusElement.innerText = "Player 1's Turn (Red)";
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.addEventListener('click', () => handleCellClick(c));
+                boardElement.appendChild(cell);
+            }
+        }
+    }
+
+    function handleCellClick(col) {
+        if (!gameActive) return;
+
+        // Gravity logic: find the lowest empty row in the clicked column
+        let targetRow = -1;
+        for (let r = ROWS - 1; r >= 0; r--) {
+            if (board[r][col] === 0) {
+                targetRow = r;
+                break;
+            }
+        }
+
+        // Column is full
+        if (targetRow === -1) return;
+
+        // Update logical board state
+        board[targetRow][col] = currentPlayer;
+
+        // Update UI board state
+        const cell = document.querySelector(`[data-row='${targetRow}'][data-col='${col}']`);
+        cell.classList.add(currentPlayer === 1 ? 'player1' : 'player2');
+
+        // Evaluate game status
+        if (checkWin(targetRow, col)) {
+            statusElement.innerText = `Player ${currentPlayer} Wins! 🎉`;
+            gameActive = false;
+            return;
+        }
+
+        if (checkDraw()) {
+            statusElement.innerText = "It's a Draw! 🤝";
+            gameActive = false;
+            return;
+        }
+
+        // Switch turns
+        currentPlayer = currentPlayer === 1 ? 2 : 1;
+        statusElement.innerText = `Player ${currentPlayer}'s Turn (${currentPlayer === 1 ? 'Red' : 'Yellow'})`;
+    }
+
+    function checkWin(r, c) {
+        const p = board[r][c];
+        // Direction vectors: [row_offset, col_offset]
+        const directions = [
+            [[0, 1], [0, -1]],   // Horizontal
+            [[1, 0], [-1, 0]],   // Vertical
+            [[1, 1], [-1, -1]],  // Diagonal down-right
+            [[1, -1], [-1, 1]]   // Diagonal down-left
+        ];
+
+        for (const dir of directions) {
+            let count = 1; // Count the piece just placed
+            
+            for (const [dr, dc] of dir) {
+                let stepR = r + dr;
+                let stepC = c + dc;
+                
+                // Track matches continuously in one direction vector line
+                while (stepR >= 0 && stepR < ROWS && stepC >= 0 && stepC < COLS && board[stepR][stepC] === p) {
+                    count++;
+                    stepR += dr;
+                    stepC += dc;
+                }
+            }
+            if (count >= 4) return true;
+        }
+        return false;
+    }
+
+    function checkDraw() {
+        return board[0].every(cell => cell !== 0);
+    }
+
+    function resetGame() {
+        initGame();
+    }
+
+    // Start on load
+    initGame();
+</script>
+</body>
+</html>
