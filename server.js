@@ -23,8 +23,8 @@ function broadcastGameDirectory() {
     io.emit('gameListUpdate', list);
 }
 
-// FIXED: Clean directional vectors with zero missing slots or syntax elisions
-function checkWin(board, r, c) {
+// UPGRADED: Returns the coordinates of the winning cells to allow visual dimming
+function getWinningCells(board, r, c) {
     const p = board[r][c];
     const directions = [
         [[0, 1], [0, -1]],   // Horizontal
@@ -34,19 +34,20 @@ function checkWin(board, r, c) {
     ];
 
     for (const dir of directions) {
-        let count = 1;
+        let winningCoordinates = [{ r, c }];
+        
         for (const [dr, dc] of dir) {
-            let sR = r + dr; 
-            let sC = c + dc;
-            while (sR >= 0 && sR < 6 && sC >= 0 && sC < 7 && board[sR][sC] === p) {
-                count++; 
-                sR += dr; 
-                sC += dc;
+            let stepR = r + dr; 
+            let stepC = c + dc;
+            while (stepR >= 0 && stepR < 6 && stepC >= 0 && stepC < 7 && board[stepR][stepC] === p) {
+                winningCoordinates.push({ r: stepR, c: stepC });
+                stepR += dr; 
+                stepC += dc;
             }
         }
-        if (count >= 4) return true;
+        if (winningCoordinates.length >= 4) return winningCoordinates;
     }
-    return false;
+    return null;
 }
 io.on('connection', (socket) => {
     broadcastGameDirectory();
@@ -62,6 +63,8 @@ io.on('connection', (socket) => {
             spectators: [],
             board: Array(6).fill(null).map(() => Array(7).fill(0)),
             currentPlayer: 1,
+            startingPlayer: 1, // Track who starts the current match
+            gamesPlayed: 0,    // Track round counter to alternate starter
             gameActive: false
         };
         
@@ -73,36 +76,26 @@ io.on('connection', (socket) => {
 
     socket.on('joinGame', (data) => {
         const g = games[data.gameId];
-        if (!g) {
-            socket.emit('joinFailure', 'Game room no longer exists!');
-            return;
-        }
-        if (g.password && g.password !== data.password) {
-            socket.emit('joinFailure', 'Incorrect game password!');
-            return;
-        }
+        if (!g) { socket.emit('joinFailure', 'Game room no longer exists!'); return; }
+        if (g.password && g.password !== data.password) { socket.emit('joinFailure', 'Incorrect game password!'); return; }
 
         socket.gameId = data.gameId;
         socket.join(data.gameId);
 
         if (g.p1DisconnectedName && g.p1DisconnectedName === data.name) {
             clearTimeout(g.p1Timeout);
-            g.p1 = socket.id;
-            g.p1DisconnectedName = null;
+            g.p1 = socket.id; g.p1DisconnectedName = null;
             g.gameActive = !!g.p2; 
             socket.emit('joinSuccess', { playerNum: 1, p1Name: g.p1Name, p2Name: g.p2Name });
             io.to(data.gameId).emit('playerReconnected', { msg: `${g.p1Name} reconnected!` });
         } else if (g.p2DisconnectedName && g.p2DisconnectedName === data.name) {
             clearTimeout(g.p2Timeout);
-            g.p2 = socket.id;
-            g.p2DisconnectedName = null;
+            g.p2 = socket.id; g.p2DisconnectedName = null;
             g.gameActive = !!g.p1;
             socket.emit('joinSuccess', { playerNum: 2, p1Name: g.p1Name, p2Name: g.p2Name });
             io.to(data.gameId).emit('playerReconnected', { msg: `${g.p2Name} reconnected!` });
         } else if (!g.p2 && !g.p2DisconnectedName) {
-            g.p2 = socket.id;
-            g.p2Name = data.name;
-            g.gameActive = true; 
+            g.p2 = socket.id; g.p2Name = data.name; g.gameActive = true; 
             socket.emit('joinSuccess', { playerNum: 2, p1Name: g.p1Name, p2Name: g.p2Name });
         } else {
             g.spectators.push(socket.id);
@@ -111,7 +104,8 @@ io.on('connection', (socket) => {
 
         io.to(data.gameId).emit('gameStateUpdate', {
             board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
-            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score
+            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
+            winnerSide: null, winningCells: null
         });
         broadcastGameDirectory();
     });
@@ -131,22 +125,29 @@ io.on('connection', (socket) => {
 
         g.board[targetRow][data.col] = g.currentPlayer;
 
-        if (checkWin(g.board, targetRow, data.col)) {
-            if (g.currentPlayer === 1) g.p1Score++; else g.p2Score++;
+        const winningCells = getWinningCells(g.board, targetRow, data.col);
+        if (winningCells) {
+            const winner = g.currentPlayer;
+            if (winner === 1) g.p1Score++; else g.p2Score++;
             g.gameActive = false;
+            g.gamesPlayed++;
+            
             io.to(socket.gameId).emit('gameStateUpdate', {
                 board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
-                p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score
+                p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
+                winnerSide: winner, winningCells: winningCells
             });
-            io.to(socket.gameId).emit('gameFinished', { type: 'win', winner: g.currentPlayer });
+            io.to(socket.gameId).emit('gameFinished', { type: 'win', winner: winner });
             return;
         }
 
         if (g.board.every(row => row.every(cell => cell !== 0))) {
             g.gameActive = false;
+            g.gamesPlayed++;
             io.to(socket.gameId).emit('gameStateUpdate', {
                 board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
-                p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score
+                p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
+                winnerSide: null, winningCells: null
             });
             io.to(socket.gameId).emit('gameFinished', { type: 'draw' });
             return;
@@ -155,7 +156,8 @@ io.on('connection', (socket) => {
         g.currentPlayer = g.currentPlayer === 1 ? 2 : 1;
         io.to(socket.gameId).emit('gameStateUpdate', {
             board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
-            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score
+            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
+            winnerSide: null, winningCells: null
         });
     });
 
@@ -167,6 +169,7 @@ io.on('connection', (socket) => {
         if (senderNum === 0) return; 
 
         if (g.gameActive) {
+            g.gamesPlayed++;
             if (senderNum === 1) {
                 g.p2Score++;
                 io.to(socket.gameId).emit('forfeitMessage', { msg: `🏳️ ${g.p1Name} folded! Match point awarded to ${g.p2Name}.` });
@@ -177,12 +180,16 @@ io.on('connection', (socket) => {
         }
 
         g.board = Array(6).fill(null).map(() => Array(7).fill(0));
-        g.currentPlayer = 1;
+        
+        // ALTERNATE STARTING ROTATION: Alternate starter based on the total games completed
+        g.startingPlayer = (g.gamesPlayed % 2 === 0) ? 1 : 2;
+        g.currentPlayer = g.startingPlayer;
         g.gameActive = !!(g.p1 && g.p2 && !g.p1DisconnectedName && !g.p2DisconnectedName);
 
         io.to(socket.gameId).emit('gameStateUpdate', {
             board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
-            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score
+            p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
+            winnerSide: null, winningCells: null
         });
         io.to(socket.gameId).emit('gameRestarted');
     });
@@ -192,31 +199,16 @@ io.on('connection', (socket) => {
         const g = games[gId];
         if (g) {
             if (g.p1 === socket.id) {
-                g.p1 = null;
-                g.p1DisconnectedName = g.p1Name;
-                g.gameActive = false;
+                g.p1 = null; g.p1DisconnectedName = g.p1Name; g.gameActive = false;
                 io.to(gId).emit('opponentDisconnected', { msg: `${g.p1Name} disconnected! Waiting 60s for re-entry...` });
-                
                 g.p1Timeout = setTimeout(() => {
-                    if (games[gId] && !games[gId].p1) {
-                        io.to(gId).emit('roomDestroyed');
-                        delete games[gId];
-                        broadcastGameDirectory();
-                    }
+                    if (games[gId] && !games[gId].p1) { io.to(gId).emit('roomDestroyed'); delete games[gId]; broadcastGameDirectory(); }
                 }, 60000);
-
             } else if (g.p2 === socket.id) {
-                g.p2 = null;
-                g.p2DisconnectedName = g.p2Name;
-                g.gameActive = false;
+                g.p2 = null; g.p2DisconnectedName = g.p2Name; g.gameActive = false;
                 io.to(gId).emit('opponentDisconnected', { msg: `${g.p2Name} disconnected! Waiting 60s for re-entry...` });
-                
                 g.p2Timeout = setTimeout(() => {
-                    if (games[gId] && !games[gId].p2) {
-                        io.to(gId).emit('roomDestroyed');
-                        delete games[gId];
-                        broadcastGameDirectory();
-                    }
+                    if (games[gId] && !games[gId].p2) { io.to(gId).emit('roomDestroyed'); delete games[gId]; broadcastGameDirectory(); }
                 }, 60000);
             } else {
                 g.spectators = g.spectators.filter(id => id !== socket.id);
