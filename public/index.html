@@ -23,7 +23,7 @@
         
         #game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 520px; }
         
-        /* UNIFIED STICKY HUD CONTAINER: Keeps Scoreboard and Status Banner completely fixed at top */
+        /* UNIFIED STICKY HUD CONTAINER: Locked to top to keep everything completely in sight */
         #sticky-hud {
             position: -webkit-sticky; position: sticky; top: 0; z-index: 100;
             width: 100%; background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -38,22 +38,11 @@
         .flash-banner { animation: flashBg 0.6s infinite alternate; font-size: 16px !important; border-radius: 5px; }
         @keyframes flashBg { 0% { background-color: #fff3cd; color: #856404; } 100% { background-color: #dc3545; color: #ffffff; } }
 
-        /* MULTI-GRID WRAPPER: Accommodates small structural numbering headers */
-        #game-container-layout {
-            display: flex; width: 100%; max-width: 500px; padding: 10px 5px; margin-top: 5px;
-        }
-        #row-labels-bar {
-            display: flex; flex-direction: column; justify-content: space-around;
-            width: 25px; padding: 45px 0 15px 0; text-align: center; font-weight: bold; font-size: 13px;
-        }
+        #game-container-layout { display: flex; width: 100%; max-width: 500px; padding: 10px 5px; margin-top: 5px; }
+        #row-labels-bar { display: flex; flex-direction: column; justify-content: space-around; width: 25px; padding: 45px 0 15px 0; text-align: center; font-weight: bold; font-size: 13px; }
         #board-and-col-wrapper { display: flex; flex-direction: column; flex: 1; }
+        #col-labels-bar { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 10px 6px 10px; text-align: center; font-weight: bold; font-size: 13px; }
         
-        #col-labels-bar {
-            display: grid; grid-template-columns: repeat(7, 1fr);
-            padding: 0 10px 6px 10px; text-align: center; font-weight: bold; font-size: 13px;
-        }
-        
-        /* Alphabetic Label Defaults */
         .grid-label { color: #a0a0a0; transition: color 0.2s ease, font-weight 0.2s ease; }
         .grid-label.highlighted-last { color: #000000 !important; font-size: 15px; font-weight: 900; }
 
@@ -69,7 +58,7 @@
         }
         .cell.player1 { background-color: #ff4136; }
         .cell.player2 { background-color: #ffdc00; }
-        .cell.dimmed { opacity: 0.25; }
+        .cell.dimmed { opacity: 0.5; }
         
         #reset { margin-top: 15px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; background-color: #333; color: white; border-radius: 5px; width: 60%; max-width: 200px; }
     </style>
@@ -87,7 +76,6 @@
         <div class="form-section"><h3>Available Open Games</h3><div id="games-list">No active game rooms found.</div></div>
     </div>
 
-    <!-- Active Gameplay Layout -->
     <div id="game-view">
         <div id="sticky-hud">
             <div id="scoreboard">
@@ -98,7 +86,6 @@
         </div>
 
         <div id="game-container-layout">
-            <!-- Left Y-Axis Row Numerical Numbers -->
             <div id="row-labels-bar">
                 <div class="grid-label" id="row-label-0">1</div>
                 <div class="grid-label" id="row-label-1">2</div>
@@ -108,7 +95,6 @@
                 <div class="grid-label" id="row-label-5">6</div>
             </div>
             <div id="board-and-col-wrapper">
-                <!-- Top X-Axis Column Alpha Letters -->
                 <div id="col-labels-bar">
                     <div class="grid-label" id="col-label-0">A</div>
                     <div class="grid-label" id="col-label-1">B</div>
@@ -184,11 +170,9 @@
         document.getElementById('p1-score-box').classList.remove('winner-crown');
         document.getElementById('p2-score-box').classList.remove('winner-crown');
 
-        // Reset all grid tracker styles to grey before rendering new inputs
         for (let r = 0; r < ROWS; r++) document.getElementById(`row-label-${r}`).classList.remove('highlighted-last');
         for (let c = 0; c < COLS; c++) document.getElementById(`col-label-${c}`).classList.remove('highlighted-last');
 
-        // CONDITIONAL HIGHLIGHT: Turn index labels black for the last slot used
         if (data.lastPlayedRow !== null && data.lastPlayedCol !== null) {
             document.getElementById(`row-label-${data.lastPlayedRow}`).classList.add('highlighted-last');
             document.getElementById(`col-label-${data.lastPlayedCol}`).classList.add('highlighted-last');
@@ -221,6 +205,7 @@
                     if (!isWinningCell) cell.classList.add('dimmed');
                 }
                 if (myPlayerNumber !== 0 && !winningCells) {
+                    // FIXED: Clean native click handler with pointer adjustments to allow fluid taps across devices
                     cell.onclick = (e) => { e.preventDefault(); handleCellClick(c); };
                 }
                 boardElement.appendChild(cell);

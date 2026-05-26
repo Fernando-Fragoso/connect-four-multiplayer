@@ -23,16 +23,25 @@ function broadcastGameDirectory() {
     io.emit('gameListUpdate', list);
 }
 
+// FIXED: Every directional pairing is fully spelled out with no missing items or syntax shorthand
 function getWinningCells(board, r, c) {
     const p = board[r][c];
-    const directions = [[,[0,-1]], [,[-1,0]], [,[-1,-1]], [[1,-1],[-1,1]]];
+    const directions = [
+        [[0, 1], [0, -1]],    // Horizontal
+        [[1, 0], [-1, 0]],    // Vertical
+        [[1, 1], [-1, -1]],   // Diagonal down-right
+        [[1, -1], [-1, 1]]    // Diagonal down-left
+    ];
+
     for (const dir of directions) {
         let winningCoordinates = [{ r, c }];
         for (const [dr, dc] of dir) {
-            let stepR = r + dr; let stepC = c + dc;
+            let stepR = r + dr; 
+            let stepC = c + dc;
             while (stepR >= 0 && stepR < 6 && stepC >= 0 && stepC < 7 && board[stepR][stepC] === p) {
                 winningCoordinates.push({ r: stepR, c: stepC });
-                stepR += dr; stepC += dc;
+                stepR += dr; 
+                stepC += dc;
             }
         }
         if (winningCoordinates.length >= 4) return winningCoordinates;
@@ -53,7 +62,7 @@ io.on('connection', (socket) => {
             spectators: [],
             board: Array(6).fill(null).map(() => Array(7).fill(0)),
             currentPlayer: 1, startingPlayer: 1, gamesPlayed: 0, gameActive: false,
-            lastPlayedRow: null, lastPlayedCol: null // Coordinate parameters
+            lastPlayedRow: null, lastPlayedCol: null 
         };
         socket.gameId = gameId;
         socket.join(gameId);
@@ -84,7 +93,7 @@ io.on('connection', (socket) => {
             socket.emit('joinSuccess', { playerNum: 0, p1Name: g.p1Name, p2Name: g.p2Name });
         }
 
-        io.to(data.gameId).emit('gameStateUpdate', {
+        io.to(g.gameId).emit('gameStateUpdate', {
             board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
             p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
             winnerSide: null, winningCells: null, lastPlayedRow: g.lastPlayedRow, lastPlayedCol: g.lastPlayedCol
