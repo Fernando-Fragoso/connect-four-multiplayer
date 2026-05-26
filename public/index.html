@@ -5,11 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Multiplayer Connect Four Platform</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -21,299 +17,122 @@
             width: 100%;
             overflow-x: hidden;
         }
-        /* Dashboard/Lobby Structure Layout */
         #lobby-container {
-            width: 100%;
-            max-width: 450px;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-top: 20px;
+            width: 100%; max-width: 450px; background: white; padding: 20px;
+            border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: center; margin-top: 20px;
         }
-        .form-section {
-            margin: 15px 0;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        .form-section h3 {
-            margin-bottom: 10px;
-            font-size: 18px;
-            color: #444;
-        }
-        input {
-            padding: 12px;
-            font-size: 16px;
-            border: 2px solid #ccc;
-            border-radius: 5px;
-            width: 90%;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-            background-color: #0051ba;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 90%;
-            max-width: 250px;
-        }
-        button:hover { background-color: #003d8c; }
-        
-        /* Available Games List Canvas */
-        #games-list {
-            margin-top: 15px;
-            text-align: left;
-            max-height: 180px;
-            overflow-y: auto;
-            padding: 5px;
-        }
-        .game-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            margin-bottom: 8px;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        .game-item button {
-            width: auto;
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-
-        /* Active Gameplay Layout */
-        #game-view { 
-            display: none; 
-            flex-direction: column; 
-            align-items: center;
-            width: 100%;
-            max-width: 500px;
-        }
-
-        /* Scoreboard Canvas */
-        #scoreboard {
-            display: flex;
-            justify-content: space-around;
-            width: 100%;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            background: #fff;
-            padding: 12px;
-            border-radius: 10px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
+        .form-section { margin: 15px 0; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        input { padding: 12px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px; width: 90%; margin-bottom: 10px; text-align: center; }
+        button { padding: 12px 24px; font-size: 16px; background-color: #0051ba; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 90%; }
+        #games-list { margin-top: 15px; max-height: 180px; overflow-y: auto; padding: 5px; }
+        .game-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 5px; font-size: 14px; }
+        .game-item button { width: auto; padding: 6px 12px; font-size: 13px; }
+        #game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+        #scoreboard { display: flex; justify-content: space-around; width: 100%; font-size: 16px; font-weight: bold; margin-bottom: 10px; background: #fff; padding: 12px; border-radius: 10px; }
         #p1-score-box { color: #ff4136; text-align: center; flex: 1; }
         #p2-score-box { color: #dcb100; text-align: center; flex: 1; }
-
-        #status { 
-            font-size: 18px; 
-            margin: 10px 0 15px 0; 
-            font-weight: bold; 
-            text-align: center;
-            min-height: 24px;
-            width: 100%;
-        }
-
-        /* Fully Responsive Mobile Board Container */
-        #board-wrapper {
-            width: 100%;
-            max-width: 480px; /* Fits standard phone breakpoints */
-            padding: 0 5px;
-        }
+        #status { font-size: 16px; margin: 10px 0; font-weight: bold; text-align: center; min-height: 24px; width: 100%; color: #333; }
+        #board-wrapper { width: 100%; max-width: 480px; padding: 0 5px; }
         #board {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr); /* dynamic columns */
-            gap: 4px;
-            background-color: #0051ba;
-            padding: 8px;
-            border-radius: 10px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            width: 100%;
-            aspect-ratio: 7 / 6; /* locking board dimensions */
+            display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+            background-color: #0051ba; padding: 10px; border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2); width: 100%; aspect-ratio: 7 / 6;
         }
+        /* Touch Optimized Grid Target Shapes */
         .cell {
-            background-color: #ffffff;
-            border-radius: 50%;
-            width: 100%;
-            height: 100%;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
-            transition: background-color 0.2s ease;
-            cursor: pointer;
+            background-color: #ffffff; border-radius: 50%; width: 100%; height: 100%;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); transition: background-color 0.15s ease;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         .cell.player1 { background-color: #ff4136; }
         .cell.player2 { background-color: #ffdc00; }
-        
-        #reset {
-            margin-top: 15px;
-            padding: 12px 30px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            background-color: #333;
-            color: white;
-            border-radius: 5px;
-            width: 60%;
-            max-width: 200px;
-        }
-        #reset:hover { background-color: #555; }
+        #reset { margin-top: 15px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; background-color: #333; color: white; border-radius: 5px; width: 60%; }
     </style>
 </head>
 <body>
-
-    <!-- Global Lobby Interface -->
     <div id="lobby-container">
         <h2>Connect Four Matchmaker</h2>
-        
-        <div class="form-section">
-            <input type="text" id="usernameInput" placeholder="Enter Your Nickname" maxlength="12">
-        </div>
-
+        <div class="form-section"><input type="text" id="usernameInput" placeholder="Enter Your Nickname" maxlength="12"></div>
         <div class="form-section">
             <h3>Create a New Game</h3>
             <input type="text" id="gameNameInput" placeholder="Game Room Name"><br>
             <input type="password" id="gamePassInput" placeholder="Password (Optional)">
             <button onclick="createNewGame()">Create & Join</button>
         </div>
-
-        <div class="form-section">
-            <h3>Available Open Games</h3>
-            <div id="games-list">No active game rooms found.</div>
-        </div>
+        <div class="form-section"><h3>Available Open Games</h3><div id="games-list">No active game rooms found.</div></div>
     </div>
-
-    <!-- Active Gameplay Layout -->
     <div id="game-view">
         <div id="scoreboard">
             <div id="p1-score-box"><span id="lbl-p1">Player 1</span><br>Score: <span id="score-p1">0</span></div>
             <div id="p2-score-box"><span id="lbl-p2">Player 2</span><br>Score: <span id="score-p2">0</span></div>
         </div>
         <div id="status">Connecting...</div>
-        <div id="board-wrapper">
-            <div id="board"></div>
-        </div>
+        <div id="board-wrapper"><div id="board"></div></div>
         <button id="reset" onclick="resetGame()">Restart Game</button>
     </div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
     const socket = io();
-    const ROWS = 6;
-    const COLS = 7;
-    let board = [];
-    let currentPlayer = 1;
-    let gameActive = false;
-
-    let myPlayerNumber = 0; // 1=P1, 2=P2, 0=Spectator
-    let myName = "";
-    let p1Name = "Waiting...";
-    let p2Name = "Waiting...";
+    const ROWS = 6; const COLS = 7;
+    let board = []; let currentPlayer = 1; let gameActive = false;
+    let myPlayerNumber = 0; let myName = ""; let p1Name = "Waiting..."; let p2Name = "Waiting...";
 
     const boardElement = document.getElementById('board');
     const statusElement = document.getElementById('status');
 
     socket.on('gameListUpdate', (games) => {
         const listDiv = document.getElementById('games-list');
-        if (games.length === 0) {
-            listDiv.innerHTML = "No active game rooms found.";
-            return;
-        }
+        if (games.length === 0) { listDiv.innerHTML = "No active game rooms found."; return; }
         listDiv.innerHTML = "";
         games.forEach(g => {
             const item = document.createElement('div');
             item.classList.add('game-item');
-            
-            let statusText = g.hasP2 ? "Spectate" : "Join & Play";
-            if (g.hasPassword) statusText += " 🔒";
-
-            item.innerHTML = `
-                <span><strong>${g.name}</strong> (${g.specCount} watching)</span>
-                <button onclick="joinExistingGame('${g.id}', ${g.hasPassword})">${statusText}</button>
-            `;
+            let txt = g.hasP2 ? "Spectate" : "Join & Play";
+            if (g.hasPassword) txt += " 🔒";
+            item.innerHTML = `<span><strong>${g.name}</strong> (${g.specCount} watching)</span>
+                             <button onclick="joinExistingGame('${g.id}', ${g.hasPassword})">${txt}</button>`;
             listDiv.appendChild(item);
         });
     });
 
     function getUsername() {
         const name = document.getElementById('usernameInput').value.trim();
-        if (!name) {
-            alert("Please enter a valid nickname first!");
-            return null;
-        }
-        myName = name;
-        return name;
+        if (!name) { alert("Please enter a nickname first!"); return null; }
+        myName = name; return name;
     }
-
     function createNewGame() {
-        const name = getUsername();
-        if (!name) return;
-
+        const name = getUsername(); if (!name) return;
         const gameName = document.getElementById('gameNameInput').value.trim();
         const password = document.getElementById('gamePassInput').value;
-
-        if (!gameName) {
-            alert("Please supply a Game Room Name!");
-            return;
-        }
-
+        if (!gameName) { alert("Please supply a Game Room Name!"); return; }
         socket.emit('createGame', { name, gameName, password });
     }
-
     function joinExistingGame(gameId, hasPassword) {
-        const name = getUsername();
-        if (!name) return;
-
+        const name = getUsername(); if (!name) return;
         let password = "";
-        if (hasPassword) {
-            password = prompt("Enter the password for this game room:");
-            if (password === null) return; 
-        }
-
+        if (hasPassword) { password = prompt("Enter game room password:"); if (password === null) return; }
         socket.emit('joinGame', { gameId, name, password });
     }
 
     socket.on('joinSuccess', (data) => {
         myPlayerNumber = data.playerNum;
-        p1Name = data.p1Name || "Waiting...";
-        p2Name = data.p2Name || "Waiting...";
-
+        p1Name = data.p1Name || "Waiting..."; p2Name = data.p2Name || "Waiting...";
         document.getElementById('lobby-container').style.display = 'none';
         document.getElementById('game-view').style.display = 'flex';
-        
         initGame();
-        
-        if (myPlayerNumber === 0) {
-            statusElement.innerText = "👀 Spectator Mode: Watching Match Gameplay...";
-        } else if (myPlayerNumber === 1) {
-            statusElement.innerText = "Waiting for an opponent to join...";
-        }
     });
 
     socket.on('joinFailure', (msg) => alert(msg));
 
     socket.on('gameStateUpdate', (data) => {
-        p1Name = data.p1Name || "Waiting...";
-        p2Name = data.p2Name || "Waiting...";
+        p1Name = data.p1Name || "Waiting..."; p2Name = data.p2Name || "Waiting...";
         document.getElementById('lbl-p1').innerText = p1Name;
         document.getElementById('lbl-p2').innerText = p2Name;
         document.getElementById('score-p1').innerText = data.p1Score;
         document.getElementById('score-p2').innerText = data.p2Score;
-        
-        gameActive = data.gameActive;
-        currentPlayer = data.currentPlayer;
-        
-        board = data.board;
-        renderBoardUI();
-        updateStatusText();
+        gameActive = data.gameActive; currentPlayer = data.currentPlayer; board = data.board;
+        renderBoardUI(); updateStatusText();
     });
 
     function initGame() {
@@ -331,7 +150,11 @@
                 if (board[r][c] === 2) cell.classList.add('player2');
                 
                 if (myPlayerNumber !== 0) {
-                    cell.addEventListener('click', () => handleCellClick(c));
+                    // Native pointerdown listener resolves both desktop clicks and mobile touches instantly without delay
+                    cell.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        handleCellClick(c);
+                    });
                 }
                 boardElement.appendChild(cell);
             }
@@ -340,13 +163,11 @@
 
     function updateStatusText() {
         if (!gameActive) return;
-
         const activeLabel = currentPlayer === 1 ? p1Name : p2Name;
-        
         if (myPlayerNumber === 0) {
             statusElement.innerText = `Spectating: Turn belongs to ${activeLabel}`;
         } else if (currentPlayer === myPlayerNumber) {
-            statusElement.innerText = `Your Turn! Drop a piece.`;
+            statusElement.innerText = `Your Turn! Tap a column.`;
         } else {
             statusElement.innerText = `Waiting for ${activeLabel}...`;
         }
@@ -359,25 +180,39 @@
 
     socket.on('gameFinished', (data) => {
         gameActive = false;
-        if (data.type === 'win') {
-            const winner = data.winner === 1 ? p1Name : p2Name;
-            statusElement.innerText = `🎉 ${winner} Wins the Match! 🎉`;
-        } else {
-            statusElement.innerText = "It's a Draw! 🤝";
-        }
+        const winner = data.winner === 1 ? p1Name : p2Name;
+        statusElement.innerText = data.type === 'win' ? `🎉 ${winner} Wins! 🎉` : "It's a Draw! 🤝";
     });
 
-    socket.on('opponentDisconnected', () => {
-        statusElement.innerText = "Player disconnected. Room frozen.";
+    socket.on('opponentDisconnected', (data) => {
+        statusElement.innerText = data.msg;
         gameActive = false;
     });
 
+    socket.on('playerReconnected', (data) => {
+        alert(data.msg);
+    });
+
+    socket.on('forfeitMessage', (data) => {
+        alert(data.msg);
+    });
+
+    socket.on('roomDestroyed', () => {
+        alert("The 60s grace period expired. Room closed.");
+        window.location.reload();
+    });
+
     function resetGame() {
-        if (myPlayerNumber === 0) {
-            alert("Spectators cannot restart matches!");
-            return;
+        if (myPlayerNumber === 0) return;
+        
+        // Confirmation check with forfeit warning
+        const msg = gameActive 
+            ? "An ongoing match is running! Resetting now will count as a FORFEIT and give your opponent a point. Do you want to proceed?"
+            : "Do you want to reset the board for a new round?";
+            
+        if (confirm(msg)) {
+            socket.emit('requestMatchReset');
         }
-        socket.emit('requestMatchReset');
     }
 </script>
 </body>
