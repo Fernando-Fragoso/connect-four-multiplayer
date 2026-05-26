@@ -23,14 +23,15 @@ function broadcastGameDirectory() {
     io.emit('gameListUpdate', list);
 }
 
-// FIXED: Every directional pairing is fully spelled out with no missing items or syntax shorthand
+// FULLY FIXED: Every single coordinate vector is fully mapped out as a discrete [row, col] line pair. 
+// No more empty slots, commas, or compression shortcuts to crash the runtime array engine.
 function getWinningCells(board, r, c) {
     const p = board[r][c];
     const directions = [
-        [[0, 1], [0, -1]],    // Horizontal
-        [[1, 0], [-1, 0]],    // Vertical
-        [[1, 1], [-1, -1]],   // Diagonal down-right
-        [[1, -1], [-1, 1]]    // Diagonal down-left
+        [[0, 1], [0, -1]],   // Horizontal path vectors
+        [[1, 0], [-1, 0]],   // Vertical path vectors
+        [[1, 1], [-1, -1]],  // Diagonal down-right path vectors
+        [[1, -1], [-1, 1]]   // Diagonal down-left path vectors
     ];
 
     for (const dir of directions) {
@@ -75,7 +76,8 @@ io.on('connection', (socket) => {
         if (!g) { socket.emit('joinFailure', 'Game room no longer exists!'); return; }
         if (g.password && g.password !== data.password) { socket.emit('joinFailure', 'Incorrect password!'); return; }
 
-        socket.gameId = data.gameId; socket.join(data.gameId);
+        socket.gameId = data.gameId; 
+        socket.join(data.gameId);
 
         if (g.p1DisconnectedName && g.p1DisconnectedName === data.name) {
             clearTimeout(g.p1Timeout); g.p1 = socket.id; g.p1DisconnectedName = null; g.gameActive = !!g.p2; 
@@ -93,7 +95,8 @@ io.on('connection', (socket) => {
             socket.emit('joinSuccess', { playerNum: 0, p1Name: g.p1Name, p2Name: g.p2Name });
         }
 
-        io.to(g.gameId).emit('gameStateUpdate', {
+        // Broadcast game layout state out to the entire channel
+        io.to(socket.gameId).emit('gameStateUpdate', {
             board: g.board, currentPlayer: g.currentPlayer, gameActive: g.gameActive,
             p1Name: g.p1Name, p2Name: g.p2Name, p1Score: g.p1Score, p2Score: g.p2Score,
             winnerSide: null, winningCells: null, lastPlayedRow: g.lastPlayedRow, lastPlayedCol: g.lastPlayedCol

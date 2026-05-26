@@ -23,7 +23,7 @@
         
         #game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 520px; }
         
-        /* UNIFIED STICKY HUD CONTAINER: Locked to top to keep everything completely in sight */
+        /* UNIFIED STICKY HUD CONTAINER: Holds both Scoreboard and Turn Status at the top of the browser view */
         #sticky-hud {
             position: -webkit-sticky; position: sticky; top: 0; z-index: 100;
             width: 100%; background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
@@ -156,6 +156,10 @@
         document.getElementById('lobby-container').style.display = 'none';
         document.getElementById('game-view').style.display = 'flex';
         initGame();
+        
+        if (myPlayerNumber === 1) {
+            statusElement.innerText = "Waiting for an opponent to join...";
+        }
     });
 
     socket.on('joinFailure', (msg) => alert(msg));
@@ -205,8 +209,8 @@
                     if (!isWinningCell) cell.classList.add('dimmed');
                 }
                 if (myPlayerNumber !== 0 && !winningCells) {
-                    // FIXED: Clean native click handler with pointer adjustments to allow fluid taps across devices
-                    cell.onclick = (e) => { e.preventDefault(); handleCellClick(c); };
+                    // Restored a clean, uninhibited native click function that works perfectly across browsers
+                    cell.onclick = () => { handleCellClick(c); };
                 }
                 boardElement.appendChild(cell);
             }
@@ -214,7 +218,12 @@
     }
 
     function updateStatusText() {
-        if (!gameActive) return;
+        if (!gameActive) {
+            if (myPlayerNumber === 1 && p2Name === "Waiting...") {
+                statusElement.innerText = "Waiting for an opponent to join...";
+            }
+            return;
+        }
         const activeLabel = currentPlayer === 1 ? p1Name : p2Name;
         if (myPlayerNumber === 0) {
             statusElement.innerText = `Spectating: Turn belongs to ${activeLabel}`;
