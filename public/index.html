@@ -7,20 +7,12 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; }
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: #f0f2f5;
-            min-height: 100vh;
-            width: 100%;
-            overflow-x: hidden;
-            padding-bottom: 30px;
+            font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center;
+            background-color: #f0f2f5; min-height: 100vh; width: 100%; overflow-x: hidden; padding-bottom: 30px;
         }
         #lobby-container {
             width: 100%; max-width: 450px; background: white; padding: 20px;
-            border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            text-align: center; margin-top: 40px;
+            border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; margin-top: 40px;
         }
         .form-section { margin: 15px 0; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         input { padding: 12px; font-size: 16px; border: 2px solid #ccc; border-radius: 5px; width: 90%; margin-bottom: 10px; text-align: center; }
@@ -29,58 +21,57 @@
         .game-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; margin-bottom: 8px; border-radius: 5px; font-size: 14px; }
         .game-item button { width: auto; padding: 6px 12px; font-size: 13px; }
         
-        #game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+        #game-view { display: none; flex-direction: column; align-items: center; width: 100%; max-width: 520px; }
         
-        /* STICKY SCOREBOARD SETUP: Always stays locked to the top layer on mobile screens */
-        #scoreboard { 
-            position: -webkit-sticky;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex; 
-            justify-content: space-around; 
-            width: 100%; 
-            font-size: 16px; 
-            font-weight: bold; 
-            background: #ffffff; 
-            padding: 15px 10px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border-bottom-left-radius: 10px;
-            border-bottom-right-radius: 10px;
+        /* UNIFIED STICKY HUD CONTAINER: Keeps Scoreboard and Status Banner completely fixed at top */
+        #sticky-hud {
+            position: -webkit-sticky; position: sticky; top: 0; z-index: 100;
+            width: 100%; background: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
         }
-        #p1-score-box { color: #ff4136; text-align: center; flex: 1; padding: 5px; border-radius: 5px; transition: all 0.3s ease; }
-        #p2-score-box { color: #dcb100; text-align: center; flex: 1; padding: 5px; border-radius: 5px; transition: all 0.3s ease; }
+        #scoreboard { display: flex; justify-content: space-around; font-size: 15px; font-weight: bold; padding: 12px 10px 6px 10px; }
+        #p1-score-box { color: #ff4136; text-align: center; flex: 1; padding: 4px; border-radius: 5px; transition: all 0.3s ease; }
+        #p2-score-box { color: #dcb100; text-align: center; flex: 1; padding: 4px; border-radius: 5px; transition: all 0.3s ease; }
+        .winner-crown { background-color: #d4edda; border: 2px dashed #28a745; transform: scale(1.03); }
         
-        /* Highlight Winner Box Classes */
-        .winner-crown { background-color: #d4edda; border: 2px dashed #28a745; transform: scale(1.05); }
+        #status { font-size: 14px; margin: 5px auto 10px auto; font-weight: bold; text-align: center; min-height: 24px; width: 92%; color: #333; padding: 5px; }
+        .flash-banner { animation: flashBg 0.6s infinite alternate; font-size: 16px !important; border-radius: 5px; }
+        @keyframes flashBg { 0% { background-color: #fff3cd; color: #856404; } 100% { background-color: #dc3545; color: #ffffff; } }
 
-        #status { font-size: 16px; margin: 15px 0; font-weight: bold; text-align: center; min-height: 24px; width: 100%; color: #333; padding: 5px; }
-        
-        /* Flashing Alert Banner Class */
-        .flash-banner { animation: flashBg 0.6s infinite alternate; font-size: 20px !important; border-radius: 5px; }
-        @keyframes flashBg {
-            0% { background-color: #fff3cd; color: #856404; transform: scale(1.0); }
-            100% { background-color: #dc3545; color: #ffffff; transform: scale(1.03); }
+        /* MULTI-GRID WRAPPER: Accommodates small structural numbering headers */
+        #game-container-layout {
+            display: flex; width: 100%; max-width: 500px; padding: 10px 5px; margin-top: 5px;
         }
+        #row-labels-bar {
+            display: flex; flex-direction: column; justify-content: space-around;
+            width: 25px; padding: 45px 0 15px 0; text-align: center; font-weight: bold; font-size: 13px;
+        }
+        #board-and-col-wrapper { display: flex; flex-direction: column; flex: 1; }
+        
+        #col-labels-bar {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            padding: 0 10px 6px 10px; text-align: center; font-weight: bold; font-size: 13px;
+        }
+        
+        /* Alphabetic Label Defaults */
+        .grid-label { color: #a0a0a0; transition: color 0.2s ease, font-weight 0.2s ease; }
+        .grid-label.highlighted-last { color: #000000 !important; font-size: 15px; font-weight: 900; }
 
-        #board-wrapper { width: 100%; max-width: 480px; padding: 0 10px; margin-top: 10px; }
         #board {
             display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
             background-color: #0051ba; padding: 10px; border-radius: 10px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2); width: 100%; aspect-ratio: 7 / 6;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15); width: 100%; aspect-ratio: 7 / 6;
         }
         .cell {
             background-color: #ffffff; border-radius: 50%; width: 100%; height: 100%;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); transition: opacity 0.4s ease, background-color 0.15s ease;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.15); transition: opacity 0.4s ease;
             cursor: pointer; -webkit-tap-highlight-color: transparent;
         }
         .cell.player1 { background-color: #ff4136; }
         .cell.player2 { background-color: #ffdc00; }
+        .cell.dimmed { opacity: 0.25; }
         
-        /* VISUAL DIMMING CONTROL: Fades out cells that aren't part of the winning row */
-        .cell.dimmed { opacity: 0.5; }
-        
-        #reset { margin-top: 20px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; background-color: #333; color: white; border-radius: 5px; width: 60%; }
+        #reset { margin-top: 15px; padding: 12px 30px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; background-color: #333; color: white; border-radius: 5px; width: 60%; max-width: 200px; }
     </style>
 </head>
 <body>
@@ -95,13 +86,41 @@
         </div>
         <div class="form-section"><h3>Available Open Games</h3><div id="games-list">No active game rooms found.</div></div>
     </div>
+
+    <!-- Active Gameplay Layout -->
     <div id="game-view">
-        <div id="scoreboard">
-            <div id="p1-score-box"><span id="lbl-p1">Player 1</span><br>Score: <span id="score-p1">0</span></div>
-            <div id="p2-score-box"><span id="lbl-p2">Player 2</span><br>Score: <span id="score-p2">0</span></div>
+        <div id="sticky-hud">
+            <div id="scoreboard">
+                <div id="p1-score-box"><span id="lbl-p1">Player 1</span><br>Score: <span id="score-p1">0</span></div>
+                <div id="p2-score-box"><span id="lbl-p2">Player 2</span><br>Score: <span id="score-p2">0</span></div>
+            </div>
+            <div id="status">Connecting...</div>
         </div>
-        <div id="status">Connecting...</div>
-        <div id="board-wrapper"><div id="board"></div></div>
+
+        <div id="game-container-layout">
+            <!-- Left Y-Axis Row Numerical Numbers -->
+            <div id="row-labels-bar">
+                <div class="grid-label" id="row-label-0">1</div>
+                <div class="grid-label" id="row-label-1">2</div>
+                <div class="grid-label" id="row-label-2">3</div>
+                <div class="grid-label" id="row-label-3">4</div>
+                <div class="grid-label" id="row-label-4">5</div>
+                <div class="grid-label" id="row-label-5">6</div>
+            </div>
+            <div id="board-and-col-wrapper">
+                <!-- Top X-Axis Column Alpha Letters -->
+                <div id="col-labels-bar">
+                    <div class="grid-label" id="col-label-0">A</div>
+                    <div class="grid-label" id="col-label-1">B</div>
+                    <div class="grid-label" id="col-label-2">C</div>
+                    <div class="grid-label" id="col-label-3">D</div>
+                    <div class="grid-label" id="col-label-4">E</div>
+                    <div class="grid-label" id="col-label-5">F</div>
+                    <div class="grid-label" id="col-label-6">G</div>
+                </div>
+                <div id="board"></div>
+            </div>
+        </div>
         <button id="reset" onclick="resetGame()">Restart Game</button>
     </div>
 <script src="/socket.io/socket.io.js"></script>
@@ -119,10 +138,8 @@
         if (games.length === 0) { listDiv.innerHTML = "No active game rooms found."; return; }
         listDiv.innerHTML = "";
         games.forEach(g => {
-            const item = document.createElement('div');
-            item.classList.add('game-item');
-            let txt = g.hasP2 ? "Spectate" : "Join & Play";
-            if (g.hasPassword) txt += " 🔒";
+            const item = document.createElement('div'); item.classList.add('game-item');
+            let txt = g.hasP2 ? "Spectate" : "Join & Play"; if (g.hasPassword) txt += " 🔒";
             item.innerHTML = `<span><strong>${g.name}</strong> (${g.specCount} watching)</span>
                              <button onclick="joinExistingGame('${g.id}', ${g.hasPassword})">${txt}</button>`;
             listDiv.appendChild(item);
@@ -143,8 +160,7 @@
     }
     function joinExistingGame(gameId, hasPassword) {
         const name = getUsername(); if (!name) return;
-        let password = "";
-        if (hasPassword) { password = prompt("Enter game room password:"); if (password === null) return; }
+        let password = ""; if (hasPassword) { password = prompt("Enter password:"); if (password === null) return; }
         socket.emit('joinGame', { gameId, name, password });
     }
 
@@ -160,21 +176,26 @@
 
     socket.on('gameStateUpdate', (data) => {
         p1Name = data.p1Name || "Waiting..."; p2Name = data.p2Name || "Waiting...";
-        document.getElementById('lbl-p1').innerText = p1Name;
-        document.getElementById('lbl-p2').innerText = p2Name;
-        document.getElementById('score-p1').innerText = data.p1Score;
-        document.getElementById('score-p2').innerText = data.p2Score;
+        document.getElementById('lbl-p1').innerText = p1Name; document.getElementById('lbl-p2').innerText = p2Name;
+        document.getElementById('score-p1').innerText = data.p1Score; document.getElementById('score-p2').innerText = data.p2Score;
         gameActive = data.gameActive; currentPlayer = data.currentPlayer; board = data.board;
         
-        // Remove styling effects before drawing the updated board layout
         statusElement.classList.remove('flash-banner');
         document.getElementById('p1-score-box').classList.remove('winner-crown');
         document.getElementById('p2-score-box').classList.remove('winner-crown');
 
+        // Reset all grid tracker styles to grey before rendering new inputs
+        for (let r = 0; r < ROWS; r++) document.getElementById(`row-label-${r}`).classList.remove('highlighted-last');
+        for (let c = 0; c < COLS; c++) document.getElementById(`col-label-${c}`).classList.remove('highlighted-last');
+
+        // CONDITIONAL HIGHLIGHT: Turn index labels black for the last slot used
+        if (data.lastPlayedRow !== null && data.lastPlayedCol !== null) {
+            document.getElementById(`row-label-${data.lastPlayedRow}`).classList.add('highlighted-last');
+            document.getElementById(`col-label-${data.lastPlayedCol}`).classList.add('highlighted-last');
+        }
+
         renderBoardUI(data.winningCells); 
-        
         if (data.winnerSide) {
-            // Apply a green flag/banner decoration to the winner's scoreboard side
             const winBoxId = data.winnerSide === 1 ? 'p1-score-box' : 'p2-score-box';
             document.getElementById(winBoxId).classList.add('winner-crown');
         } else {
@@ -187,29 +208,20 @@
         renderBoardUI(null);
     }
 
-    // DRAW ENGINE: Fades out non-winning chips if winning coordinate parameters are supplied
     function renderBoardUI(winningCells) {
         boardElement.innerHTML = '';
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
-                const cell = document.createElement('div');
-                cell.classList.add('cell');
+                const cell = document.createElement('div'); cell.classList.add('cell');
                 if (board[r][c] === 1) cell.classList.add('player1');
                 if (board[r][c] === 2) cell.classList.add('player2');
                 
-                // If a player won, check if this specific cell is part of the 4-in-a-row combination
                 if (winningCells && board[r][c] !== 0) {
                     const isWinningCell = winningCells.some(coords => coords.r === r && coords.c === c);
-                    if (!isWinningCell) {
-                        cell.classList.add('dimmed'); // Dim irrelevant chips
-                    }
+                    if (!isWinningCell) cell.classList.add('dimmed');
                 }
-
                 if (myPlayerNumber !== 0 && !winningCells) {
-                    cell.onclick = (e) => {
-                        e.preventDefault();
-                        handleCellClick(c);
-                    };
+                    cell.onclick = (e) => { e.preventDefault(); handleCellClick(c); };
                 }
                 boardElement.appendChild(cell);
             }
@@ -234,38 +246,24 @@
     }
 
     socket.on('gameFinished', (data) => {
-        gameActive = false;
-        const winner = data.winner === 1 ? p1Name : p2Name;
-        
+        gameActive = false; const winner = data.winner === 1 ? p1Name : p2Name;
         if (data.type === 'win') {
             statusElement.innerText = `🎉 MATCH OVER: ${winner.toUpperCase()} WINS! 🎉`;
-            statusElement.classList.add('flash-banner'); // Triggers alternating CSS color sequence
-        } else {
-            statusElement.innerText = "It's a Draw! 🤝";
-        }
+            statusElement.classList.add('flash-banner');
+        } else { statusElement.innerText = "It's a Draw! 🤝"; }
     });
 
-    socket.on('opponentDisconnected', (data) => {
-        statusElement.innerText = data.msg;
-        gameActive = false;
-    });
-
+    socket.on('opponentDisconnected', (data) => { statusElement.innerText = data.msg; gameActive = false; });
     socket.on('playerReconnected', (data) => alert(data.msg));
     socket.on('forfeitMessage', (data) => alert(data.msg));
-
-    socket.on('roomDestroyed', () => {
-        alert("The 60s grace period expired. Room closed.");
-        window.location.reload();
-    });
+    socket.on('roomDestroyed', () => { alert("The 60s grace period expired. Room closed."); window.location.reload(); });
 
     function resetGame() {
         if (myPlayerNumber === 0) return;
         const msg = gameActive 
             ? "An ongoing match is running! Resetting now will count as a FORFEIT and give your opponent a point. Do you want to proceed?"
             : "Do you want to reset the board for a new round?";
-        if (confirm(msg)) {
-            socket.emit('requestMatchReset');
-        }
+        if (confirm(msg)) socket.emit('requestMatchReset');
     }
 </script>
 </body>
